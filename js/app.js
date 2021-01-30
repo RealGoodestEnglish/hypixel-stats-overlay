@@ -4,24 +4,44 @@ const formattersFunctions = {
     'goal': (player, value) => `${(getField(player, value) / config.goals[value] * 100).toFixed(2)}%`,
     'eval': (player, value) => eval(applyFormatters(player, value, { format: false })),
 };
-const customFields = {
-    'stats.SkyWars.exp_until_next_level': player => {
-        function getSwLevel(xp) {
-            var xps = [0, 20, 70, 150, 250, 500, 1000, 2000, 3500, 6000, 10000, 15000];
-            if (xp >= 15000) {
-                return (xp - 15000) / 10000 + 12;
-            } else {
-                for (i = 0; i < xps.length; i++) {
-                    if (xp < xps[i]) {
-                        return 1 + i + (xp - xps[i - 1]) / (xps[i] - xps[i - 1]);
-                    }
-                }
+const xps = [0, 20, 70, 150, 250, 500, 1000, 2000, 3500, 6000, 10000, 15000];
+function getSwLevel(xp) {
+    if (xp >= 15000) {
+        return (xp - 15000) / 10000 + 12;
+    } else {
+        for (let i = 0; i < xps.length; i++) {
+            if (xp < xps[i]) {
+                return i + (xp - xps[i - 1]) / (xps[i] - xps[i - 1]);
             }
         }
-
+    }
+}
+const customFields = {
+    'stats.SkyWars.exp_until_next_level': player => {
         const lvl = getSwLevel(player.stats.SkyWars.skywars_experience);
-        const perc = lvl % 1;
-        return 10000 * (1 - perc);
+        const percent = lvl % 1;
+        const f = Math.floor(lvl);
+        if (lvl > 11) {
+            return 10000 * (1 - percent);
+        }
+        return (xps[f] - xps[f-1]) * (1 - percent);
+    },
+    'stats.SkyWars.current_exp': player => {
+        const lvl = getSwLevel(player.stats.SkyWars.skywars_experience);
+        const percent = lvl % 1;
+        const f = Math.floor(lvl);
+        if (lvl > 11) {
+            return 10000 * (percent);
+        }
+        return (xps[f] - xps[f-1]) * (percent);
+    },
+    'stats.SkyWars.total_exp_need': player => {
+        const lvlDouble = getSwLevel(player.stats.SkyWars.skywars_experience);
+        const lvlInt = Math.floor(lvlDouble);
+        if (lvlInt > 11) {
+            return 10000;
+        }
+        return (xps[lvlInt] - xps[lvlInt-1]);
     },
     'stats.SkyWars.win_streak': player => {
         const newWins = player.stats.SkyWars.wins;
@@ -42,7 +62,6 @@ const customFields = {
             winStreakData.wins = newWins;
             winStreakData.winStreak += 1;
         }
-
         return winStreakData.winStreak;
     },
 };
@@ -157,7 +176,7 @@ function update() {
     getPlayerByName(config.player)
         .then(player => {
             if (!player) {
-                drawItem(['§4Player not found:', '§c' + config.player]);
+                drawItem(['§4未能找到玩家:', '§c' + config.player]);
                 return;
             }
 
@@ -169,7 +188,7 @@ function update() {
         })
         .catch(error => {
             console.error(error);
-            drawItem(['§4Error:', '§c' + error.message]);
+            drawItem(['§4錯誤:', '§c' + error.message]);
         });
 }
 
